@@ -8,6 +8,7 @@
         db-migrate db-generate db-seed db-studio db-reset \
         test test-unit test-integration test-e2e test-e2e-ui test-cov \
         lint format check \
+        spell knip circular deps-check deps-update sort-pkg quality \
         shell-api shell-web shell-db \
         docker-build-prod
 
@@ -112,6 +113,29 @@ lint: ## リントを実行
 
 format: ## コードフォーマットを実行
 	npm run format
+
+format-check: ## フォーマットチェック（CI 用）
+	npm run format:check
+
+spell: ## スペルチェックを実行
+	npm run spell
+
+knip: ## 未使用コード・依存を検出
+	npm run knip
+
+circular: ## 循環依存を検出
+	npm run circular
+
+deps-check: ## 未使用 dependencies を検出
+	npm run deps:check
+
+deps-update: ## 依存パッケージの更新をチェック
+	npm run deps:update
+
+sort-pkg: ## package.json をソート
+	npm run sort-pkg
+
+quality: lint format-check spell knip circular ## コード品質チェックを一括実行
 
 # ---------------------------------------------------------------------------
 # Health Check

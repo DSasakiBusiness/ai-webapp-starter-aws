@@ -17,15 +17,45 @@
     "test:e2e": "npx playwright test --config=tests/e2e/playwright.config.ts",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "clean": "turbo run clean && rm -rf node_modules",
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:generate": "npm run db:generate --workspace=apps/api",
     "db:seed": "npm run db:seed --workspace=apps/api",
-    "db:studio": "npm run db:studio --workspace=apps/api"
+    "db:studio": "npm run db:studio --workspace=apps/api",
+    "prepare": "husky",
+    "spell": "cspell \"**/*.{ts,tsx,js,jsx,md}\" --no-progress",
+    "spell:fix": "cspell \"**/*.{ts,tsx,js,jsx,md}\" --no-progress --show-suggestions",
+    "knip": "knip",
+    "knip:fix": "knip --fix",
+    "circular": "madge --circular --extensions ts,tsx apps/ packages/",
+    "deps:check": "depcheck",
+    "deps:update": "ncu",
+    "deps:update:apply": "ncu -u",
+    "sort-pkg": "sort-package-json package.json apps/*/package.json packages/*/package.json"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write",
+      "cspell --no-must-find-files"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.48.0",
+    "cspell": "^9.7.0",
+    "depcheck": "^1.4.7",
+    "husky": "^9.1.7",
+    "knip": "^6.0.1",
+    "lint-staged": "^16.4.0",
+    "madge": "^8.0.0",
+    "npm-check-updates": "^19.6.5",
     "prettier": "^3.3.0",
+    "sort-package-json": "^3.6.1",
     "turbo": "^2.3.0",
     "typescript": "^5.6.0",
     "wait-on": "^8.0.0"
