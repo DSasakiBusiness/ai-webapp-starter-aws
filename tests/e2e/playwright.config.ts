@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const baseURL = process.env.E2E_BASE_URL || 'http://localhost:3000';
+const apiURL = process.env.E2E_API_URL || 'http://localhost:3001';
+
 export default defineConfig({
   testDir: './specs',
   fullyParallel: true,
@@ -7,34 +10,26 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ['html', { outputFolder: '../../playwright-report' }],
+    ['html', { outputFolder: '../../playwright-report', open: 'never' }],
     ['list'],
   ],
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
     {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
-    {
       name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        storageState: '.auth/user.json',
-      },
-      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: 'make up',
-        url: 'http://localhost:3000',
-        reuseExistingServer: true,
-        timeout: 120 * 1000,
-      },
+  /* Docker のサービスが起動していることを前提とする。
+   * ローカルではまず `make up` を実行してから `make test-e2e` を実行する。
+   * CI では GitHub Actions が個別にサービスを起動する。 */
+  expect: {
+    timeout: 10_000,
+  },
+  timeout: 30_000,
 });

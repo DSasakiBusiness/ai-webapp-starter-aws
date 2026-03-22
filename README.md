@@ -1,320 +1,151 @@
 # AI Webapp Starter AWS
 
-AI 特化 Web サービス開発用スターターリポジトリ。  
-Next.js + NestJS + Prisma + LLM + Docker + AWS の実務投入レベルのテンプレート。
+AI 特化 Web サービス開発用のスターターリポジトリ（AWS デプロイ対応）。
 
-## 想定ユースケース
+Claude Code でそのまま活用できるよう設計されており、`.claude/` 配下にエージェント定義とスキル手順書を備えています。
 
-- AI チャットアプリ
-- RAG を活用したナレッジベース検索
-- LLM を組み込んだ業務システム
-- AI コンテンツ生成サービス
-- ドキュメント解析・要約サービス
+## クイックスタート
+
+```bash
+# 1. クローン
+git clone https://github.com/DSasakiBusiness/ai-webapp-starter-aws.git
+cd ai-webapp-starter-aws
+
+# 2. セットアップ（.env コピー、依存インストール、Prisma Client 生成）
+make setup
+
+# 3. .env を編集して LLM API キーを設定（任意）
+#    OPENAI_API_KEY=sk-...
+#    ANTHROPIC_API_KEY=sk-ant-...
+
+# 4. Docker で起動
+make up
+
+# 5. DB マイグレーション & シード
+make db-migrate
+make db-seed
+```
+
+起動後の確認先:
+
+| サービス | URL |
+|---|---|
+| Web (Next.js) | http://localhost:3000 |
+| API (NestJS) | http://localhost:3001/api/v1/health |
+| Prisma Studio | `make db-studio` → http://localhost:5555 |
 
 ## 技術スタック
 
 | レイヤー | 技術 |
 |---|---|
-| Frontend | Next.js (App Router) |
-| Backend | NestJS |
-| ORM | Prisma |
-| Database | PostgreSQL |
-| AI | OpenAI / Anthropic SDK |
-| RAG | Embedding + Vector DB (オプション) |
-| E2E Test | Playwright |
+| Frontend | Next.js 15 (App Router) + React 19 |
+| Backend | NestJS 10 + Prisma ORM |
+| Database | PostgreSQL 16 |
+| AI/LLM | OpenAI / Anthropic（Provider パターンで交換可能） |
+| Testing | Jest + React Testing Library + Playwright |
 | CI/CD | GitHub Actions |
-| Infrastructure | AWS (App Runner / ECS Fargate) |
-| Local Dev | Docker / Docker Compose |
+| Infrastructure | AWS (App Runner or ECS/Fargate) + RDS + ECR |
+| Security | PentAGI（staging 限定） |
+| Dev Environment | Docker Compose |
 
 ## ディレクトリ構成
 
 ```
 ai-webapp-starter-aws/
-├── .claude/                      # Claude Code 設定
-│   ├── CLAUDE.md                 # プロジェクト横断ルール
-│   ├── agents/                   # AI エージェント定義
-│   │   ├── product/              #   プロダクト系
-│   │   ├── engineering/          #   エンジニアリング系
-│   │   ├── testing/              #   テスト・品質系
-│   │   └── aws/                  #   AWS 専用
-│   └── skills/                   # 再利用可能スキル
-│       ├── common/               #   共通スキル (23)
-│       └── aws/                  #   AWS 専用スキル (5)
+├── .claude/                    # Claude Code 正本（エージェント・スキル定義）
+│   ├── CLAUDE.md               #   プロジェクト横断ルール
+│   ├── agents/                 #   エージェント定義（10 agents）
+│   │   ├── product/            #     product-manager
+│   │   ├── engineering/        #     solution-architect, frontend/backend-developer, ai-engineer
+│   │   ├── testing/            #     qa-reviewer, tdd-coach, e2e-tester, security-reviewer
+│   │   └── aws/                #     aws-platform-engineer
+│   └── skills/                 #   スキル手順書（28 skills）
+│       ├── common/             #     共通スキル（23）
+│       └── aws/                #     AWS 固有スキル（5）
 ├── apps/
-│   ├── web/                      # Next.js フロントエンド
-│   │   ├── Dockerfile            #   本番用
-│   │   ├── Dockerfile.dev        #   開発用
-│   │   └── src/                  #   ソースコード
-│   └── api/                      # NestJS バックエンド
-│       ├── Dockerfile            #   本番用
-│       ├── Dockerfile.dev        #   開発用
-│       ├── prisma/               #   Prisma スキーマ
-│       └── src/                  #   ソースコード
+│   ├── api/                    # NestJS バックエンド
+│   │   ├── src/
+│   │   │   ├── common/         #   例外フィルター、インターセプター
+│   │   │   ├── health/         #   ヘルスチェック（テスト付き）
+│   │   │   └── prisma/         #   Prisma サービス
+│   │   ├── prisma/             #   スキーマ、マイグレーション、シード
+│   │   ├── Dockerfile          #   本番用（マルチステージ）
+│   │   └── Dockerfile.dev      #   開発用（ホットリロード）
+│   └── web/                    # Next.js フロントエンド
+│       ├── src/
+│       │   ├── app/            #   App Router ページ（テスト付き）
+│       │   └── lib/            #   API Client
+│       ├── Dockerfile          #   本番用（マルチステージ）
+│       └── Dockerfile.dev      #   開発用（ホットリロード）
 ├── packages/
-│   └── shared/                   # 共通型・ユーティリティ
+│   └── shared/                 # 共通型定義（ApiResponse, ChatMessage 等）
 ├── tests/
-│   ├── unit/                     # ユニットテスト方針
-│   ├── integration/              # 統合テスト方針
-│   └── e2e/                      # E2E テスト (Playwright)
+│   ├── unit/                   # ユニットテスト方針
+│   ├── integration/            # 統合テスト方針
+│   └── e2e/                    # E2E テスト（Playwright）
 ├── infra/
-│   └── aws/                      # AWS インフラ定義
-├── .github/
-│   └── workflows/                # CI/CD パイプライン
-├── docs/                         # ドキュメント
-├── docker-compose.yml            # ローカル開発環境
-├── Makefile                      # ショートカットコマンド
-└── README.md
+│   └── aws/cloudformation/     # AWS インフラテンプレート
+├── scripts/                    # ユーティリティスクリプト
+├── docs/                       # ドキュメント
+├── .github/workflows/          # CI/CD ワークフロー
+├── docker-compose.yml          # ローカル開発環境
+└── Makefile                    # 開発ショートカット
 ```
 
-## Agents 一覧
-
-| Agent | 役割 |
-|---|---|
-| product-manager | プロダクト要件の定義と優先度判断 |
-| solution-architect | 全体設計・責務境界・非機能要件の設計 |
-| frontend-developer | Next.js による UI 実装 |
-| backend-developer | NestJS による API 実装 |
-| ai-engineer | LLM / RAG 統合の設計・実装 |
-| qa-reviewer | コード品質レビュー・品質基準の判定 |
-| tdd-coach | TDD サイクルの監督・受け入れ条件の定義 |
-| e2e-tester | Playwright による E2E テストの設計・実行 |
-| security-reviewer | セキュリティレビュー・PentAGI による検証 |
-| aws-platform-engineer | AWS 固有の設計・デプロイ・監視 |
-
-## Skills 一覧
-
-### Common Skills (23)
-
-| Skill | 用途 |
-|---|---|
-| clarify-product-requirements | プロダクト要件の明確化 |
-| define-mvp | MVP スコープの定義 |
-| implement-nextjs-ui | Next.js UI 実装手順 |
-| implement-nestjs-api | NestJS API 実装手順 |
-| implement-prisma-schema | Prisma スキーマ変更手順 |
-| integrate-llm-feature | LLM 機能統合手順 |
-| build-rag-pipeline | RAG パイプライン構築手順 |
-| tdd-feature-delivery | TDD による機能開発手順 |
-| e2e-readiness-pipeline | E2E テスト準備手順 |
-| review-security-with-pentagi | PentAGI セキュリティレビュー |
-| run-ai-evals | AI 評価実行手順 |
-| review-ai-output-quality | AI 出力品質レビュー |
-| review-performance | パフォーマンスレビュー |
-| write-api-contract | API 契約定義手順 |
-| generate-ui-spec | UI 仕様生成手順 |
-| secure-release-pipeline | セキュアリリース手順 |
-| setup-pentagi-scan | PentAGI スキャン設定 |
-| review-release-readiness | リリース準備レビュー |
-| clarify-ai-requirements | AI 要件の明確化 |
-| clarify-test-scope | テストスコープの明確化 |
-| setup-docker-dev-environment | Docker 開発環境セットアップ |
-| run-tests-in-docker | Docker でのテスト実行 |
-| manage-prisma-in-docker | Docker での Prisma 操作 |
-
-### AWS Skills (5)
-
-| Skill | 用途 |
-|---|---|
-| design-aws-architecture | AWS アーキテクチャ設計 |
-| deploy-to-aws | AWS デプロイ手順 |
-| setup-aws-ci-cd | AWS CI/CD 設定 |
-| configure-aws-secrets | AWS Secrets 管理 |
-| monitor-on-aws | AWS 監視設定 |
-
-## 初回セットアップ
-
-### 前提条件
-
-- Node.js >= 20.0.0
-- npm >= 10.0.0
-- Docker & Docker Compose
-- Git
-
-### 1. リポジトリのクローン
+## 主要コマンド
 
 ```bash
-git clone https://github.com/your-org/ai-webapp-starter-aws.git
-cd ai-webapp-starter-aws
-```
+# Docker
+make up              # サービス起動
+make down            # サービス停止
+make logs            # ログ表示
+make check           # ヘルスチェック
 
-### 2. 環境変数の設定
+# Database
+make db-migrate      # マイグレーション
+make db-seed         # シードデータ
+make db-studio       # Prisma Studio（GUI）
+make db-reset        # 全リセット
 
-```bash
-cp .env.example .env
-# .env を編集して必要な値を設定
-```
-
-### 3. Docker を使ったセットアップ（推奨）
-
-```bash
-# 全サービスをビルド＆起動
-make up
-
-# ログを確認
-make logs
-
-# DB マイグレーション
-make db-migrate
-
-# シードデータ投入
-make db-seed
-```
-
-### 4. ローカル直接セットアップ（Docker 不使用）
-
-```bash
-# 依存パッケージのインストール
-npm install
-
-# Prisma Client の生成
-npm run db:generate
-
-# DB マイグレーション（PostgreSQL が起動済みであること）
-npm run db:migrate
-
-# 開発サーバーの起動
-npm run dev
-```
-
-## Docker を使った開発
-
-### サービスの起動・停止
-
-```bash
-make up          # バックグラウンドで起動
-make up-logs     # ログ表示付きで起動
-make down        # 停止
-make restart     # 再起動
-make build       # 再ビルド
-make clean       # 全削除（ボリュームも含む）
-```
-
-### ログの確認
-
-```bash
-make logs        # 全サービス
-make logs-api    # API のみ
-make logs-web    # Web のみ
-make logs-db     # DB のみ
-```
-
-### シェルアクセス
-
-```bash
-make shell-api   # API コンテナ
-make shell-web   # Web コンテナ
-make shell-db    # DB コンテナ（psql）
-```
-
-## Prisma 操作
-
-```bash
-# Docker 経由
-make db-migrate   # マイグレーション適用
-make db-generate  # Client 生成
-make db-seed      # シードデータ
-make db-studio    # Prisma Studio
-make db-reset     # DB リセット
-
-# ローカル直接
-npm run db:migrate
-npm run db:generate
-npm run db:seed
-npm run db:studio
-```
-
-## テスト実行
-
-```bash
-# Docker 経由
-make test             # 全テスト
-make test-unit        # ユニットテスト
+# Testing
+make test-unit       # ユニットテスト
 make test-integration # 統合テスト
+make test-e2e        # E2E テスト
+make test-cov        # カバレッジ
 
-# E2E テスト（ホストから実行）
-make test-e2e         # ヘッドレス実行
-make test-e2e-ui      # UI モード
+# Code Quality
+make lint            # リント
+make format          # フォーマット
 
-# ローカル直接
-npm run test
-npm run test:unit
-npm run test:integration
-npm run test:e2e
+# Shell
+make shell-api       # API コンテナに接続
+make shell-db        # DB に psql で接続
+
+# Production
+make docker-build-prod  # 本番イメージビルド
 ```
 
-## PentAGI セキュリティレビュー
+## Claude Code での活用
 
-> **⚠️ 重要: PentAGI は本番環境に対して絶対に実行しないでください。**
+このリポジトリは Claude Code 用の `.claude/` 構成を持っています:
 
-PentAGI はステージングまたは隔離環境でのみ使用します。
+- **CLAUDE.md** — プロジェクト横断ルール（TDD、Docker、セキュリティ等）
+- **agents/** — 10 種のエージェント定義（役割と責務）
+- **skills/** — 28 種のスキル手順書（再利用可能な作業手順）
 
-1. `.env` に PentAGI の接続情報を設定
-2. ステージング環境をデプロイ
-3. `security-reviewer` agent に PentAGI スキャンを依頼
-4. 結果を Critical / High / Medium / Low で分類
-5. 人間による再確認を必ず実施
+Claude Code 上で作業する場合、エージェントが状況に応じて適切なスキルを参照し、TDD サイクルに従って開発を進めます。
 
-詳細は [docs/security.md](docs/security.md) を参照。
+## ドキュメント
 
-## AWS デプロイ概要
-
-### 推奨構成
-
-- **コンピュート**: App Runner (シンプル) または ECS/Fargate (スケーラブル)
-- **データベース**: RDS PostgreSQL
-- **シークレット**: Secrets Manager
-- **コンテナレジストリ**: ECR
-- **CDN**: CloudFront
-- **監視**: CloudWatch
-
-### デプロイ手順
-
-1. ECR にコンテナイメージをプッシュ
-2. RDS PostgreSQL を構築
-3. Secrets Manager にシークレットを登録
-4. App Runner / ECS サービスを作成
-5. CloudFront を構成（オプション）
-
-詳細は [docs/aws-deployment.md](docs/aws-deployment.md) を参照。
-
-## CI/CD 概要
-
-GitHub Actions による自動化:
-
-| ワークフロー | トリガー | 内容 |
-|---|---|---|
-| `ci.yml` | PR / push to main | lint, test, build |
-| `deploy.yml` | push to main | ECR push, App Runner / ECS deploy |
-| `security-scan.yml` | weekly / manual | 依存関係スキャン |
-
-## 拡張方法
-
-### 新しい API エンドポイントの追加
-
-1. `tdd-coach` で受け入れ条件を定義
-2. `write-api-contract` で API 契約を定義
-3. `implement-nestjs-api` で実装
-4. `tdd-feature-delivery` で TDD サイクル実行
-
-### RAG 機能の追加
-
-1. `clarify-ai-requirements` で要件を明確化
-2. `build-rag-pipeline` でパイプラインを構築
-3. `run-ai-evals` で評価を実行
-
-### AWS サービスの追加
-
-1. `design-aws-architecture` でアーキテクチャ設計
-2. `deploy-to-aws` でデプロイ手順を定義
-3. `configure-aws-secrets` でシークレット管理
-
-## 注意点
-
-- `.env` ファイルを Git にコミットしないこと
-- LLM API キーは Secrets Manager で管理すること
-- PentAGI は本番環境に対して絶対に実行しないこと
-- Docker ボリュームを削除すると DB データが失われること
-- 本番デプロイ前にセキュリティレビューを必ず実施すること
+| ドキュメント | 内容 |
+|---|---|
+| [アーキテクチャ](docs/architecture.md) | システム構成、レイヤー設計 |
+| [開発ガイド](docs/development-guide.md) | 開発ワークフロー、命名規約、トラブルシューティング |
+| [Docker 開発](docs/docker-development.md) | Docker Compose の操作と Prisma 管理 |
+| [テスト戦略](docs/testing-strategy.md) | テスティングピラミッド、TDD、AI テスト方針 |
+| [AI 統合](docs/ai-integration.md) | LLM Provider パターン、ストリーミング、RAG |
+| [セキュリティ](docs/security.md) | PentAGI 運用、OWASP 対策、LLM セキュリティ |
+| [AWS デプロイ](docs/aws-deployment.md) | App Runner / ECS、CloudFormation、CI/CD |
 
 ## ライセンス
 

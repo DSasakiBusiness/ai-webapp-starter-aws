@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Format Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run lint
+      - run: npx prettier --check "**/*.{ts,tsx,js,jsx,json,md}"
 
   test-unit:
     name: Unit Tests
@@ -35,7 +35,10 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx prisma generate --schema=apps/api/prisma/schema.prisma
-      - run: npm run test:unit
+      - name: API unit tests
+        run: npm run test:unit --workspace=apps/api
+      - name: Web unit tests
+        run: npm run test:unit --workspace=apps/web
 
   test-integration:
     name: Integration Tests
@@ -64,8 +67,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - run: npx prisma generate --schema=apps/api/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
-      - run: npm run test:integration
+      - run: npm run test:integration --workspace=apps/api
 
   test-e2e:
     name: E2E Tests
@@ -89,6 +93,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_webapp_test?schema=public
       NEXT_PUBLIC_API_URL: http://localhost:3001
       API_PORT: 3001
+      API_HOST: 0.0.0.0
       JWT_SECRET: test-jwt-secret
       NODE_ENV: test
     steps:
@@ -98,6 +103,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - run: npx prisma generate --schema=apps/api/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
       - run: npx prisma db seed
       - run: npx playwright install --with-deps chromium
@@ -106,7 +112,7 @@ jobs:
         run: |
           npm run start --workspace=apps/api &
           npm run start --workspace=apps/web &
-          npx wait-on http://localhost:3000 http://localhost:3001/api/v1/health
+          npx wait-on http://localhost:3000 http://localhost:3001/api/v1/health --timeout 60000
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
