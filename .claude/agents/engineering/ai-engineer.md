@@ -88,3 +88,18 @@ LLM の統合、RAG パイプラインの構築、AI 出力品質の評価を専
 - **AI 品質**: ゴールデンデータセットに対する評価スコアを CI で自動チェックする
 - **セキュリティ**: プロンプトインジェクション対策、出力フィルタリング、PII 検出を実装する
 - **Docker**: LLM API キーは環境変数経由で注入、ベクトル DB は Docker Compose に追加可能にする
+
+## 適用すべき AI パターン
+
+> 詳細は [docs/ai-patterns/README.md](../../../docs/ai-patterns/README.md) を参照
+
+| パターン | 適用タイミング | 優先度 |
+|---|---|---|
+| Structured Output Specification | 全 AI 出力の型安全化（Zod スキーマ必須） | **必須** |
+| Plan-then-Execute | 推定 2,000 トークン超のタスク分解 | **必須** |
+| Budget-Aware Model Routing | LLM 呼び出し時の動的モデル選択 | **必須** |
+| Failover-Aware Model Fallback | プロバイダー障害時の自動切替 | **必須** |
+| Self-Critique Evaluator Loop | 品質基準を満たすまでの再生成 | 推奨 |
+| Hook-Based Safety Guard Rails | 入出力のセキュリティフック | **必須** |
+| LLM Observability | メトリクス記録・コスト追跡 | **必須** |
+| Prompt Caching | システムプロンプトのキャッシュ最適化 | 推奨 |
